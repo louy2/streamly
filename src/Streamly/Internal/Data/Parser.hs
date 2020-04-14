@@ -36,7 +36,8 @@
 -- "Text.ParserCombinators.ReadP/parser-combinators/parsec/megaparsec/attoparsec"
 -- have consistent names. takeP/takeWhileP/munch?
 
-module Streamly.Internal.Data.Parser
+module Streamly.Internal.Data.Parser where
+{-
     (
       Parser (..)
 
@@ -867,3 +868,5 @@ manyTill (Fold fstep finitial fextract)
 
     extract (ManyTillL fs sR) = extractL sR >>= fstep fs >>= fextract
     extract (ManyTillR _ fs _) = fextract fs
+
+-}
