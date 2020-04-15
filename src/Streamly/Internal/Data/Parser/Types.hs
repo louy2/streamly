@@ -119,8 +119,8 @@ module Streamly.Internal.Data.Parser.Types
 
     , die
     , dieM
-    , splitSome
-    , splitMany
+--    , splitSome
+--    , splitMany
     , alt
     )
 where
@@ -128,11 +128,12 @@ where
 import Control.Applicative (Alternative(..))
 import Control.Exception (assert, Exception(..))
 import Control.Monad (MonadPlus(..))
-import Control.Monad.Catch (MonadCatch, try, throwM, MonadThrow)
+import Control.Monad.Catch (MonadCatch, throwM, MonadThrow)
+-- import Control.Monad.Catch (MonadCatch, try, throwM, MonadThrow)
 
 import Fusion.Plugin.Types (Fuse(..))
-import Streamly.Internal.Data.Fold (Fold(..), toList)
-import Streamly.Internal.Data.Strict (Tuple3'(..))
+-- import Streamly.Internal.Data.Fold (Fold(..), toList)
+-- import Streamly.Internal.Data.Strict (Tuple3'(..))
 
 -- | The return type of a 'Parser' step.
 --
@@ -382,7 +383,7 @@ alt (Parser stepL initialL extractL) (Parser stepR initialR extractR) =
 
     extract (AltParseR sR) = extractR sR
     extract (AltParseL _ sL) = extractL sL
-
+{-
 -- | See documentation of 'Streamly.Internal.Data.Parser.many'.
 --
 -- /Internal/
@@ -479,7 +480,7 @@ splitSome (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
         case r of
             Left (_ :: ParseError) -> fextract fs
             Right b -> fstep fs b >>= fextract
-
+-}
 -- This is the dual of "nil".
 --
 -- | A parser that always fails with an error message without consuming
@@ -531,10 +532,10 @@ instance MonadCatch m => Alternative (Parser m a) where
     (<|>) = alt
 
     {-# INLINE many #-}
-    many = splitMany toList
+    many = undefined -- splitMany toList
 
     {-# INLINE some #-}
-    some = splitSome toList
+    some = undefined -- splitSome toList
 
 {-# ANN type ConcatParseState Fuse #-}
 data ConcatParseState sl p = ConcatParseL sl | ConcatParseR p
