@@ -156,7 +156,7 @@ library lib-prelude
 
 common bench-options
   import: compile-options, optimization-options, bench-depends
-  ghc-options: -with-rtsopts "-T -K32K -M16M"
+
   build-depends: streamly-benchmarks
 
 -- Some benchmarks are threaded some are not
