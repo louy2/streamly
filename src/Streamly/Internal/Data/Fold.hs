@@ -433,14 +433,14 @@ last = _Fold1 (flip const)
 -- | Like 'length', except with a more general 'Num' return value
 --
 -- @since 0.7.0
-{-# INLINABLE genericLength #-}
+{-# INLINE genericLength #-}
 genericLength :: (Monad m, Num b) => Fold m a b
 genericLength = Fold (\n _ -> return $ Yield $ n + 1) (return 0) return
 
 -- | Determine the length of the input stream.
 --
 -- @since 0.7.0
-{-# INLINABLE length #-}
+{-# INLINE length #-}
 length :: Monad m => Fold m a Int
 length = genericLength
 
@@ -449,7 +449,7 @@ length = genericLength
 -- stable for floating point numbers.
 --
 -- @since 0.7.0
-{-# INLINABLE sum #-}
+{-# INLINE sum #-}
 sum :: (Monad m, Num a) => Fold m a a
 sum = Fold (\x a -> return $ Yield $ x + a) (return 0) return
 
