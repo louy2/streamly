@@ -131,7 +131,7 @@ import Control.Monad (MonadPlus(..))
 import Control.Monad.Catch (MonadCatch, try, throwM, MonadThrow)
 
 import Fusion.Plugin.Types (Fuse(..))
-import Streamly.Internal.Data.Fold.Types (initialTSM, stepWS, doneWS)
+import Streamly.Internal.Data.Fold.Types (liftInitialM, liftStep, liftExtract)
 import Streamly.Internal.Data.Fold (Fold(..), toList)
 import Streamly.Internal.Data.Strict (Tuple3'(..))
 
@@ -397,7 +397,7 @@ splitMany (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
 
     initial = do
         ps <- initial1 -- parse state
-        fs <- initialTSM finitial -- fold state
+        fs <- liftInitialM finitial -- fold state
         pure (Tuple3' ps 0 fs)
 
     {-# INLINE step #-}
@@ -411,19 +411,19 @@ splitMany (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
                 return $ Skip n (Tuple3' s (cnt1 - n) fs)
             Stop n b -> do
                 s <- initial1
-                fs1 <- stepWS fstep fs b
+                fs1 <- liftStep fstep fs b
                 -- XXX we need to yield and backtrack here
                 return $ Skip n (Tuple3' s 0 fs1)
             Error _ -> do
-                xs <- doneWS fextract fs
+                xs <- liftExtract fextract fs
                 return $ Stop cnt1 xs
 
     -- XXX The "try" may impact performance if this parser is used as a scan
     extract (Tuple3' s _ fs) = do
         r <- try $ extract1 s
         case r of
-            Left (_ :: ParseError) -> doneWS fextract fs
-            Right b -> stepWS fstep fs b >>= doneWS fextract
+            Left (_ :: ParseError) -> liftExtract fextract fs
+            Right b -> liftStep fstep fs b >>= liftExtract fextract
 
 -- | See documentation of 'Streamly.Internal.Data.Parser.some'.
 --
@@ -438,7 +438,7 @@ splitSome (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
 
     initial = do
         ps <- initial1 -- parse state
-        fs <- initialTSM finitial -- fold state
+        fs <- liftInitialM finitial -- fold state
         pure (Tuple3' ps 0 (Left fs))
 
     {-# INLINE step #-}
@@ -449,7 +449,7 @@ splitSome (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
             Skip  n s -> return $ Skip n (Tuple3' s undefined (Left fs))
             Stop n b -> do
                 s <- initial1
-                fs1 <- stepWS fstep fs b
+                fs1 <- liftStep fstep fs b
                 -- XXX this is also a yield point, we will never fail beyond
                 -- this point. If we do not yield then if an error occurs after
                 -- this then we will backtrack to the previous yield point
@@ -468,18 +468,18 @@ splitSome (Fold fstep finitial fextract) (Parser step1 initial1 extract1) =
                 return $ Skip n (Tuple3' s (cnt1 - n) (Right fs))
             Stop n b -> do
                 s <- initial1
-                fs1 <- stepWS fstep fs b
+                fs1 <- liftStep fstep fs b
                 -- XXX we need to yield here but also backtrack
                 return $ Skip n (Tuple3' s 0 (Right fs1))
-            Error _ -> Stop cnt1 <$> doneWS fextract fs
+            Error _ -> Stop cnt1 <$> liftExtract fextract fs
 
     -- XXX The "try" may impact performance if this parser is used as a scan
-    extract (Tuple3' s _ (Left fs)) = extract1 s >>= stepWS fstep fs >>= doneWS fextract
+    extract (Tuple3' s _ (Left fs)) = extract1 s >>= liftStep fstep fs >>= liftExtract fextract
     extract (Tuple3' s _ (Right fs)) = do
         r <- try $ extract1 s
         case r of
-            Left (_ :: ParseError) -> doneWS fextract fs
-            Right b -> stepWS fstep fs b >>= doneWS fextract
+            Left (_ :: ParseError) -> liftExtract fextract fs
+            Right b -> liftStep fstep fs b >>= liftExtract fextract
 
 -- This is the dual of "nil".
 --

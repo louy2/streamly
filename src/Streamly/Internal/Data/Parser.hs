@@ -180,7 +180,7 @@ import Control.Monad.Catch (MonadCatch, MonadThrow(..))
 import Prelude
        hiding (any, all, take, takeWhile, sequence)
 
-import Streamly.Internal.Data.Fold.Types (Fold(..), initialTSM, stepWS, doneWS)
+import Streamly.Internal.Data.Fold.Types (Fold(..), liftInitialM, liftStep, liftExtract)
 
 import Streamly.Internal.Data.Parser.Tee
 import Streamly.Internal.Data.Parser.Types
@@ -345,17 +345,17 @@ take n (Fold fstep finitial fextract) = Parser step initial extract
 
     where
 
-    initial = Tuple' 0 <$> initialTSM finitial
+    initial = Tuple' 0 <$> liftInitialM finitial
 
     step (Tuple' i r) a = do
-        res <- stepWS fstep r a
+        res <- liftStep fstep r a
         let i1 = i + 1
             s1 = Tuple' i1 res
         if i1 < n
         then return $ Yield 0 s1
-        else Stop 0 <$> doneWS fextract res
+        else Stop 0 <$> liftExtract fextract res
 
-    extract (Tuple' _ r) = doneWS fextract r
+    extract (Tuple' _ r) = liftExtract fextract r
 
 --
 -- XXX can we use a "cmp" operation in a common implementation?
@@ -376,17 +376,17 @@ takeEQ n (Fold fstep finitial fextract) = Parser step initial extract
 
     where
 
-    initial = Tuple' 0 <$> initialTSM finitial
+    initial = Tuple' 0 <$> liftInitialM finitial
 
     step (Tuple' i r) a = do
-        res <- stepWS fstep r a
+        res <- liftStep fstep r a
         let i1 = i + 1
             s1 = Tuple' i1 res
-        if i1 < n then return (Skip 0 s1) else Stop 0 <$> doneWS fextract res
+        if i1 < n then return (Skip 0 s1) else Stop 0 <$> liftExtract fextract res
 
     extract (Tuple' i r) =
         if n == i
-        then doneWS fextract r
+        then liftExtract fextract r
         else throwM $ ParseError err
 
         where
@@ -414,10 +414,10 @@ takeGE n (Fold fstep finitial fextract) = Parser step initial extract
 
     where
 
-    initial = Tuple' 0 <$> initialTSM finitial
+    initial = Tuple' 0 <$> liftInitialM finitial
 
     step (Tuple' i r) a = do
-        res <- stepWS fstep r a
+        res <- liftStep fstep r a
         let i1 = i + 1
             s1 = Tuple' i1 res
         return $
@@ -425,7 +425,7 @@ takeGE n (Fold fstep finitial fextract) = Parser step initial extract
             then Skip 0 s1
             else Yield 0 s1
 
-    extract (Tuple' i r) = doneWS fextract r >>= f
+    extract (Tuple' i r) = liftExtract fextract r >>= f
 
         where
 
@@ -458,16 +458,16 @@ takeGE n (Fold fstep finitial fextract) = Parser step initial extract
 {-# INLINE takeWhile #-}
 takeWhile :: Monad m => (a -> Bool) -> Fold m a b -> Parser m a b
 takeWhile predicate (Fold fstep finitial fextract) =
-    Parser step initial (doneWS fextract)
+    Parser step initial (liftExtract fextract)
 
     where
 
-    initial = initialTSM finitial
+    initial = liftInitialM finitial
 
     step s a =
         if predicate a
-        then Yield 0 <$> stepWS fstep s a
-        else Stop 1 <$> doneWS fextract s
+        then Yield 0 <$> liftStep fstep s a
+        else Stop 1 <$> liftExtract fextract s
 
 -- | Like 'takeWhile' but takes at least one element otherwise fails.
 --
@@ -492,14 +492,14 @@ takeWhile1 predicate (Fold fstep finitial fextract) =
     step (Just s) a =
         if predicate a
         then do
-            r <- stepWS fstep s a
+            r <- liftStep fstep s a
             return $ Yield 0 (Just r)
         else do
-            b <- doneWS fextract s
+            b <- liftExtract fextract s
             return $ Stop 1 b
 
     extract Nothing = throwM $ ParseError "takeWhile1: end of input"
-    extract (Just s) = doneWS fextract s
+    extract (Just s) = liftExtract fextract s
 
 -- | Collect stream elements until an element succeeds the predicate. Drop the
 -- element on which the predicate succeeded. The succeeding element is treated
@@ -521,15 +521,15 @@ takeWhile1 predicate (Fold fstep finitial fextract) =
 {-# INLINABLE sliceSepBy #-}
 sliceSepBy :: Monad m => (a -> Bool) -> Fold m a b -> Parser m a b
 sliceSepBy predicate (Fold fstep finitial fextract) =
-    Parser step initial (doneWS fextract)
+    Parser step initial (liftExtract fextract)
 
     where
 
-    initial = initialTSM finitial
+    initial = liftInitialM finitial
     step s a =
         if not (predicate a)
-        then Yield 0 <$> stepWS fstep s a
-        else Stop 0 <$> doneWS fextract s
+        then Yield 0 <$> liftStep fstep s a
+        else Stop 0 <$> liftExtract fextract s
 
 -- | Collect stream elements until an element succeeds the predicate. Also take
 -- the element on which the predicate succeeded. The succeeding element is
@@ -581,17 +581,17 @@ sliceSepByMax predicate cnt (Fold fstep finitial fextract) =
 
     where
 
-    initial = Tuple' 0 <$> initialTSM finitial
+    initial = Tuple' 0 <$> liftInitialM finitial
     step (Tuple' i r) a = do
-        res <- stepWS fstep r a
+        res <- liftStep fstep r a
         let i1 = i + 1
             s1 = Tuple' i1 res
         if not (predicate a) && i1 < cnt
         then return $ Yield 0 s1
         else do
-            b <- doneWS fextract res
+            b <- liftExtract fextract res
             return $ Stop 0 b
-    extract (Tuple' _ r) = doneWS fextract r
+    extract (Tuple' _ r) = liftExtract fextract r
 
 -- | Like 'splitOn' but strips leading, trailing, and repeated separators.
 -- Therefore, @".a..b."@ having '.' as the separator would be parsed as
@@ -841,7 +841,7 @@ manyTill (Fold fstep finitial fextract)
     where
 
     initial = do
-        fs <- initialTSM finitial
+        fs <- liftInitialM finitial
         ManyTillR 0 fs <$> initialR
 
     step (ManyTillR cnt fs st) a = do
@@ -852,7 +852,7 @@ manyTill (Fold fstep finitial fextract)
                 assert (cnt + 1 - n >= 0) (return ())
                 return $ Skip n (ManyTillR (cnt + 1 - n) fs s)
             Stop n _ -> do
-                b <- doneWS fextract fs
+                b <- liftExtract fextract fs
                 return $ Stop n b
             Error _ -> do
                 rR <- initialL
@@ -864,12 +864,12 @@ manyTill (Fold fstep finitial fextract)
             Yield n s -> return $ Yield n (ManyTillL fs s)
             Skip n s -> return $ Skip n (ManyTillL fs s)
             Stop n b -> do
-                fs1 <- stepWS fstep fs b
+                fs1 <- liftStep fstep fs b
                 l <- initialR
                 -- XXX we need a yield with backtrack here
                 -- return $ Yield n (ManyTillR 0 fs1 l)
                 return $ Skip n (ManyTillR 0 fs1 l)
             Error err -> return $ Error err
 
-    extract (ManyTillL fs sR) = extractL sR >>= stepWS fstep fs >>= doneWS fextract
-    extract (ManyTillR _ fs _) = doneWS fextract fs
+    extract (ManyTillL fs sR) = extractL sR >>= liftStep fstep fs >>= liftExtract fextract
+    extract (ManyTillR _ fs _) = liftExtract fextract fs
