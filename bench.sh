@@ -26,7 +26,7 @@ ALL_BENCHMARKS="$SERIAL_BENCHMARKS $CONCURRENT_BENCHMARKS $ARRAY_BENCHMARKS $VIR
 # RTS options that go inside +RTS and -RTS while running the benchmark.
 bench_rts_opts () {
   case "$1" in
-    "fold-o-1-space") echo -n "-T -K36K -M16M" ;;
+    "fold-o-1-space") echo -n "-T -K128K -M16M" ;;
     "fold-o-n-heap") echo -n "-T -K36K -M128M" ;;
     "unfold-o-1-space") echo -n "-T -K36K -M16M" ;;
     "unfold-o-n-space") echo -n "-T -K32M -M64M" ;;
