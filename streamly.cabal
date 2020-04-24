@@ -365,6 +365,8 @@ library
                      -- Mutable data
                      , Streamly.Internal.Mutable.Prim.Var
 
+                     , Streamly.Internal.Data.Json.Stream
+
     if !impl(ghcjs)
        exposed-modules:
                        Streamly.Network.Socket
@@ -388,6 +390,9 @@ library
                      , transformers      >= 0.4   && < 0.6
 
                      , heaps             >= 0.3     && < 0.4
+
+                     , unordered-containers
+                     , scientific
 
                     -- concurrency
                      , atomic-primops    >= 0.8   && < 0.9
